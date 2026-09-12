@@ -144,62 +144,6 @@
           </div>
         </div>
 
-        <!-- TARGET ALTITUDE & BUOYANCY PLANNER PLATE -->
-        <div class="planner-plate">
-          <div class="planner-plate-header">
-            <span>[ TARGET ALTITUDE & BUOYANCY PLANNER ]</span>
-            <span class="planner-plate-hint">BALLOON SIZING ENGINE</span>
-          </div>
-
-          <div class="planner-intro">
-            Target a specific flight altitude and compute the exact required lift ratio and balloon volume, factoring in balloon block mass.
-          </div>
-
-          <div class="planner-grid">
-            <div class="input-group">
-              <label for="targetAltInput">TARGET ALTITUDE</label>
-              <div class="input-wrapper">
-                <input type="number" id="targetAltInput" class="input-field" value="300" min="63" max="319.9" step="any">
-                <span class="unit-badge">Y</span>
-              </div>
-            </div>
-
-            <div class="input-group">
-              <label for="blockDensityInput">BALLOON BLOCK MASS
-                <span class="input-hint-badge" title="Mass added per 1 m³ balloon block (e.g. wool or sail cloth). Set 0 if already included in ship mass.">(kpg/m³)</span>
-              </label>
-              <div class="input-wrapper">
-                <input type="number" id="blockDensityInput" class="input-field" value="0" min="0" step="any">
-                <span class="unit-badge">kpg/m³</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- PLANNER COMPUTED RESULTS -->
-          <div class="planner-results">
-            <div class="planner-stat-row">
-              <span class="planner-stat-label">Target required lift ratio:</span>
-              <span class="planner-stat-val" id="plannerTargetRatio">3.33 : 1</span>
-            </div>
-            <div class="planner-stat-row">
-              <span class="planner-stat-label">Target ambient pressure:</span>
-              <span class="planner-stat-val" id="plannerTargetPressure">30.01 %</span>
-            </div>
-            <div class="planner-stat-row highlight">
-              <span class="planner-stat-label">Required balloon volume:</span>
-              <span class="planner-stat-val accent-val" id="plannerTargetVolume">2,666 m³</span>
-            </div>
-            <div class="planner-stat-row">
-              <span class="planner-stat-label">Volume delta (&Delta;V):</span>
-              <span class="planner-stat-val" id="plannerDeltaVolume">+1,466 m³ needed</span>
-            </div>
-          </div>
-
-          <button type="button" class="btn-action btn-accent planner-apply-btn" id="btnApplyTarget">
-            [ APPLY TARGET BALLOON VOLUME TO SHIP ]
-          </button>
-        </div>
-
       </section>
 
       <!-- RIGHT COLUMN: FORCES BREAKDOWN & CEILING READOUT -->
@@ -272,6 +216,46 @@
           <div class="ceiling-label">CALCULATED MAXIMUM FLIGHT CEILING</div>
           <div class="ceiling-value" id="valCeilingY">Y = 224</div>
           <div class="ceiling-sub" id="valCeilingSub">Required ambient pressure: 66.67 %</div>
+        </div>
+
+        <!-- TARGET ALTITUDE & LIFT RATIO PLANNER (RIGHT COLUMN) -->
+        <div class="planner-plate">
+          <div class="planner-plate-header">
+            <span>[ TARGET ALTITUDE & LIFT RATIO ]</span>
+            <span class="planner-plate-hint">ALTITUDE TARGETING</span>
+          </div>
+
+          <div class="planner-target-row">
+            <label for="targetAltInput" class="planner-input-label">TARGET ALTITUDE</label>
+            <div class="input-wrapper" style="max-width: 130px;">
+              <input type="number" id="targetAltInput" class="input-field" value="300" min="63" max="319.9" step="any">
+              <span class="unit-badge">Y</span>
+            </div>
+          </div>
+
+          <!-- PLANNER COMPUTED RESULTS -->
+          <div class="planner-results">
+            <div class="planner-stat-row">
+              <span class="planner-stat-label">Target required lift ratio:</span>
+              <span class="planner-stat-val accent-val" id="plannerTargetRatio">3.33 : 1</span>
+            </div>
+            <div class="planner-stat-row">
+              <span class="planner-stat-label">Target ambient pressure:</span>
+              <span class="planner-stat-val" id="plannerTargetPressure">30.01 %</span>
+            </div>
+            <div class="planner-stat-row highlight">
+              <span class="planner-stat-label">Estimated balloon volume:</span>
+              <span class="planner-stat-val" id="plannerTargetVolume">2,666 m³</span>
+            </div>
+            <div class="planner-stat-row">
+              <span class="planner-stat-label">Volume delta (&Delta;V):</span>
+              <span class="planner-stat-val" id="plannerDeltaVolume">+1,466 m³ needed</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn-action btn-accent planner-apply-btn" id="btnApplyTarget">
+            [ APPLY ESTIMATED VOLUME TO BALLOON ]
+          </button>
         </div>
 
       </section>

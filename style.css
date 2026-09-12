@@ -512,6 +512,19 @@ body {
   line-height: 1.35;
 }
 
+.planner-target-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.planner-input-label {
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: var(--ink-dim);
+}
+
 .planner-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

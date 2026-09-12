@@ -38,7 +38,6 @@ const flightStatusText = document.getElementById('flightStatusText');
 const flightStamp = document.getElementById('flightStamp');
 
 const targetAltInput = document.getElementById('targetAltInput');
-const blockDensityInput = document.getElementById('blockDensityInput');
 const plannerTargetRatio = document.getElementById('plannerTargetRatio');
 const plannerTargetPressure = document.getElementById('plannerTargetPressure');
 const plannerTargetVolume = document.getElementById('plannerTargetVolume');
@@ -255,9 +254,6 @@ shipNameInput.addEventListener('input', () => { updateUrlHash(); });
 if (targetAltInput) {
   targetAltInput.addEventListener('input', () => { recompute(); updateUrlHash(); });
 }
-if (blockDensityInput) {
-  blockDensityInput.addEventListener('input', () => { recompute(); updateUrlHash(); });
-}
 
 // --- PRIMARY CALCULATION ENGINE ---
 function recompute() {
@@ -381,12 +377,11 @@ function recompute() {
   recomputePlanner(mass, gravity, balloonVol, levitation);
 }
 
-// --- TARGET ALTITUDE & BUOYANCY PLANNER ENGINE ---
+// --- TARGET ALTITUDE & LIFT RATIO ENGINE ---
 function recomputePlanner(effectiveMass, effectiveGravity, currentBalloonVol, levitation) {
   if (!targetAltInput || !plannerTargetRatio) return;
 
   const targetAlt = parseFloat(targetAltInput.value);
-  const blockDensity = parseFloat(blockDensityInput ? blockDensityInput.value : 0) || 0;
 
   if (isNaN(targetAlt) || targetAlt < 63 || targetAlt >= 320) {
     plannerTargetRatio.textContent = "INVALID";
@@ -420,34 +415,11 @@ function recomputePlanner(effectiveMass, effectiveGravity, currentBalloonVol, le
     return;
   }
 
-  // Net lift per 1 m³ balloon at target altitude
-  // 1 m³ generates (16.5 * pTarget) pN lift, but adds (11 * blockDensity) pN weight
-  const liftPerUnit = 16.5 * pTarget;
-  const weightPerUnit = 11.0 * blockDensity;
-  const netLiftPerUnit = liftPerUnit - weightPerUnit;
-
-  if (netLiftPerUnit <= 0) {
-    plannerTargetVolume.textContent = "IMPOSSIBLE";
-    plannerDeltaVolume.textContent = `Balloon material (${blockDensity} kpg/m³) is too heavy for buoyancy at Y=${formatAltitude(targetAlt)}!`;
-    if (btnApplyTarget) btnApplyTarget.disabled = true;
-    return;
-  }
-
-  // Base non-balloon ship mass (dry mass)
-  const currentBalloonMass = currentBalloonVol * blockDensity;
-  const dryMass = Math.max(0, effectiveMass - currentBalloonMass);
-
-  // Equilibrium equation at Y_target:
-  // (16.5 * V_target + levitation) * pTarget = 11 * dryMass + 11 * blockDensity * V_target
-  // V_target * (16.5 * pTarget - 11 * blockDensity) = 11 * dryMass - levitation * pTarget
-  const numerator = 11.0 * dryMass - levitation * pTarget;
-
-  let targetVol = 0;
-  if (numerator <= 0) {
-    targetVol = 0;
-  } else {
-    targetVol = numerator / netLiftPerUnit;
-  }
+  // Required combined lift to achieve equilibrium at target altitude:
+  // combinedLift * pTarget = effectiveGravity  =>  combinedLift = effectiveGravity / pTarget
+  const reqCombinedLift = effectiveGravity / pTarget;
+  const reqBalloonLift = Math.max(0, reqCombinedLift - levitation);
+  const targetVol = reqBalloonLift / 16.5;
 
   const targetVolCeil = Math.ceil(targetVol);
   const deltaVol = targetVolCeil - currentBalloonVol;
@@ -460,16 +432,9 @@ function recomputePlanner(effectiveMass, effectiveGravity, currentBalloonVol, le
     btnApplyTarget.disabled = false;
     btnApplyTarget.onclick = () => {
       balloonVolInput.value = targetVolCeil;
-      if (blockDensity > 0) {
-        const newTotalMass = parseFloat((dryMass + targetVolCeil * blockDensity).toFixed(2));
-        massInput.value = newTotalMass;
-        if (gravityInput.value.trim() !== '') {
-          gravityInput.value = parseFloat((newTotalMass * 11).toFixed(2));
-        }
-      }
       recompute();
       updateUrlHash();
-      showToast(`TARGET VOLUME (${formatNumber(targetVolCeil)} m³) APPLIED TO VESSEL!`);
+      showToast(`ESTIMATED VOLUME (${formatNumber(targetVolCeil)} m³) APPLIED TO BALLOON!`);
     };
   }
 }
@@ -675,9 +640,6 @@ function updateUrlHash() {
   if (targetAltInput && targetAltInput.value) {
     p.set('tY', targetAltInput.value);
   }
-  if (blockDensityInput && blockDensityInput.value && blockDensityInput.value !== '0') {
-    p.set('bM', blockDensityInput.value);
-  }
   window.history.replaceState(null, '', '#' + p.toString());
 }
 
@@ -697,7 +659,6 @@ function loadFromUrlHash() {
     if (p.has('lev')) levitationInput.value = p.get('lev');
     if (p.has('dim')) dimensionSelect.value = p.get('dim');
     if (p.has('tY') && targetAltInput) targetAltInput.value = p.get('tY');
-    if (p.has('bM') && blockDensityInput) blockDensityInput.value = p.get('bM');
   } catch (err) {
     console.warn("Error reading URL hash:", err);
   }
