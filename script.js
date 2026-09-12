@@ -369,7 +369,7 @@ function recompute() {
     } else {
       const ceilingY = solveAltitudeForPressure(reqPressure);
       valCeilingY.textContent = "Y = " + formatAltitude(ceilingY);
-      valCeilingSub.textContent = "Required ambient pressure: " + reqPressurePercent;
+      valCeilingSub.textContent = "Required air pressure: " + reqPressurePercent;
       drawDiagram(reqPressure, ceilingY);
     }
   }
