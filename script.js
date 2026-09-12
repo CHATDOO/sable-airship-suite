@@ -30,11 +30,20 @@ const valGravity = document.getElementById('valGravity');
 const valBalloonLift = document.getElementById('valBalloonLift');
 const valLevitation = document.getElementById('valLevitation');
 const valCombinedLift = document.getElementById('valCombinedLift');
+const valLiftRatio = document.getElementById('valLiftRatio');
 const valReqPressure = document.getElementById('valReqPressure');
 const valCeilingY = document.getElementById('valCeilingY');
 const valCeilingSub = document.getElementById('valCeilingSub');
 const flightStatusText = document.getElementById('flightStatusText');
 const flightStamp = document.getElementById('flightStamp');
+
+const targetAltInput = document.getElementById('targetAltInput');
+const blockDensityInput = document.getElementById('blockDensityInput');
+const plannerTargetRatio = document.getElementById('plannerTargetRatio');
+const plannerTargetPressure = document.getElementById('plannerTargetPressure');
+const plannerTargetVolume = document.getElementById('plannerTargetVolume');
+const plannerDeltaVolume = document.getElementById('plannerDeltaVolume');
+const btnApplyTarget = document.getElementById('btnApplyTarget');
 
 const photoDropzone = document.getElementById('photoDropzone');
 const photoInput = document.getElementById('photoInput');
@@ -210,14 +219,18 @@ function formatAltitude(y) {
 
 // --- SYNCHRONIZATION OF INPUTS ---
 massInput.addEventListener('input', () => {
-  if (!userEditedGravityManually) {
-    const rawM = massInput.value.trim();
-    if (rawM !== '') {
-      const m = parseFloat(rawM);
-      if (!isNaN(m)) {
+  const rawM = massInput.value.trim();
+  if (rawM !== '') {
+    const m = parseFloat(rawM);
+    if (!isNaN(m)) {
+      gravityInput.placeholder = `Auto: ${formatNumber(m * 11, 2)} pN`;
+      if (!userEditedGravityManually && gravityInput.value.trim() !== '') {
         gravityInput.value = parseFloat((m * 11).toFixed(4));
       }
-    } else {
+    }
+  } else {
+    gravityInput.placeholder = "Auto: Mass × 11 pN";
+    if (!userEditedGravityManually) {
       gravityInput.value = '';
     }
   }
@@ -226,7 +239,11 @@ massInput.addEventListener('input', () => {
 });
 
 gravityInput.addEventListener('input', () => {
-  userEditedGravityManually = true;
+  if (gravityInput.value.trim() === '') {
+    userEditedGravityManually = false;
+  } else {
+    userEditedGravityManually = true;
+  }
   recompute();
   updateUrlHash();
 });
@@ -235,26 +252,49 @@ balloonVolInput.addEventListener('input', () => { recompute(); updateUrlHash(); 
 levitationInput.addEventListener('input', () => { recompute(); updateUrlHash(); });
 dimensionSelect.addEventListener('change', () => { recompute(); updateUrlHash(); });
 shipNameInput.addEventListener('input', () => { updateUrlHash(); });
+if (targetAltInput) {
+  targetAltInput.addEventListener('input', () => { recompute(); updateUrlHash(); });
+}
+if (blockDensityInput) {
+  blockDensityInput.addEventListener('input', () => { recompute(); updateUrlHash(); });
+}
 
 // --- PRIMARY CALCULATION ENGINE ---
 function recompute() {
   const rawMass = massInput.value.trim();
   const rawGravity = gravityInput.value.trim();
-  const mass = parseFloat(rawMass) || 0;
-  const gravity = parseFloat(rawGravity) || 0;
+  const hasMass = rawMass !== '' && !isNaN(parseFloat(rawMass));
+  const hasGravity = rawGravity !== '' && !isNaN(parseFloat(rawGravity));
+
+  let mass = hasMass ? parseFloat(rawMass) : 0;
+  let gravity = hasGravity ? parseFloat(rawGravity) : 0;
   const balloonVol = parseFloat(balloonVolInput.value) || 0;
   const levitation = parseFloat(levitationInput.value) || 0;
   const dimension = dimensionSelect.value;
 
-  // Lili's Mismatch Rule: Gravitational force (pN) = Mass (kpg) * 11 (strict decimal matching)
+  // Behind the scenes auto-calculation if one of the two is empty
+  let isGravityAuto = false;
+  if (hasMass && !hasGravity) {
+    gravity = parseFloat((mass * 11).toFixed(4));
+    isGravityAuto = true;
+    gravityInput.placeholder = `Auto: ${formatNumber(gravity, 2)} pN`;
+  } else if (!hasMass && hasGravity) {
+    mass = parseFloat((gravity / 11).toFixed(4));
+    massInput.placeholder = `Auto: ${formatNumber(mass, 2)} kpg`;
+  } else if (!hasMass && !hasGravity) {
+    gravityInput.placeholder = "Auto: Mass × 11 pN";
+    massInput.placeholder = "Auto: Gravity ÷ 11 kpg";
+  }
+
+  // Lili's Mismatch Rule: Checked ONLY if BOTH mass and gravity were explicitly entered
   const expectedGravity = mass * 11;
-  const mathMismatch = (rawMass !== '' && rawGravity !== '' && Math.abs(gravity - expectedGravity) > 0.01);
+  const mathMismatch = (hasMass && hasGravity && Math.abs(gravity - expectedGravity) > 0.01);
 
   // 1 m³ balloon volume lifts 1.5 kpg * 11 = 16.5 pN lift force
   const balloonLift = balloonVol * 16.5;
   const combinedLift = balloonLift + levitation;
 
-  valGravity.textContent = formatNumber(gravity) + " pN";
+  valGravity.textContent = formatNumber(gravity) + " pN" + (isGravityAuto ? " (auto)" : "");
   valBalloonLift.textContent = formatNumber(balloonLift) + " pN";
   valLevitation.textContent = formatNumber(levitation) + " pN";
   valCombinedLift.textContent = formatNumber(combinedLift) + " pN";
@@ -271,9 +311,11 @@ function recompute() {
     flightStamp.textContent = "MISMATCH";
     flightStamp.className = "stamp-box";
     valReqPressure.textContent = "MISMATCH";
+    if (valLiftRatio) valLiftRatio.textContent = "MISMATCH";
     valCeilingY.textContent = "ERR";
     valCeilingSub.textContent = `Expected Grav Force = Mass × 11 = ${formatNumber(expectedGravity)} pN (Differ by ${formatNumber(Math.abs(gravity - expectedGravity))} pN)`;
     drawDiagram(null, null);
+    recomputePlanner(mass, gravity, balloonVol, levitation);
     return;
   }
 
@@ -283,11 +325,19 @@ function recompute() {
 
   if (combinedLift <= 0 || gravity <= 0) {
     valReqPressure.textContent = "INVALID";
+    if (valLiftRatio) valLiftRatio.textContent = "N/A";
     valCeilingY.textContent = "N/A";
     valCeilingSub.textContent = "Zero lift force or weight";
     setFlightStatus(false);
     drawDiagram(null, null);
+    recomputePlanner(mass, gravity, balloonVol, levitation);
     return;
+  }
+
+  // Lift-to-weight ratio: Combined Lift / Gravitational Force
+  const liftRatio = combinedLift / gravity;
+  if (valLiftRatio) {
+    valLiftRatio.textContent = liftRatio.toFixed(2) + " : 1";
   }
 
   // Required atmospheric pressure fraction
@@ -300,6 +350,7 @@ function recompute() {
     valCeilingSub.textContent = "THE SHIP DOES NOT HAVE ENOUGH LIFT TO FLY";
     setFlightStatus(false);
     drawDiagram(null, null);
+    recomputePlanner(mass, gravity, balloonVol, levitation);
     return;
   }
 
@@ -325,6 +376,101 @@ function recompute() {
       valCeilingSub.textContent = "Required ambient pressure: " + reqPressurePercent;
       drawDiagram(reqPressure, ceilingY);
     }
+  }
+
+  recomputePlanner(mass, gravity, balloonVol, levitation);
+}
+
+// --- TARGET ALTITUDE & BUOYANCY PLANNER ENGINE ---
+function recomputePlanner(effectiveMass, effectiveGravity, currentBalloonVol, levitation) {
+  if (!targetAltInput || !plannerTargetRatio) return;
+
+  const targetAlt = parseFloat(targetAltInput.value);
+  const blockDensity = parseFloat(blockDensityInput ? blockDensityInput.value : 0) || 0;
+
+  if (isNaN(targetAlt) || targetAlt < 63 || targetAlt >= 320) {
+    plannerTargetRatio.textContent = "INVALID";
+    plannerTargetPressure.textContent = "INVALID (63 - 319.9)";
+    plannerTargetVolume.textContent = "N/A";
+    plannerDeltaVolume.textContent = "Target altitude must be between 63 and 319.9";
+    if (btnApplyTarget) btnApplyTarget.disabled = true;
+    return;
+  }
+
+  const pTarget = getOverworldPressureAtY(targetAlt);
+  const pTargetPercent = (pTarget * 100).toFixed(2) + " %";
+  plannerTargetPressure.textContent = pTargetPercent;
+
+  if (pTarget <= 0.0001) {
+    plannerTargetRatio.textContent = "INFINITE (P ≈ 0)";
+    plannerTargetVolume.textContent = "UNREACHABLE";
+    plannerDeltaVolume.textContent = "Atmosphere ends at Y=320";
+    if (btnApplyTarget) btnApplyTarget.disabled = true;
+    return;
+  }
+
+  const reqRatio = 1.0 / pTarget;
+  plannerTargetRatio.textContent = reqRatio.toFixed(2) + " : 1";
+
+  // If ship has no mass or gravity, cannot calculate required volume
+  if (effectiveGravity <= 0 && effectiveMass <= 0) {
+    plannerTargetVolume.textContent = "N/A";
+    plannerDeltaVolume.textContent = "Enter ship mass first";
+    if (btnApplyTarget) btnApplyTarget.disabled = true;
+    return;
+  }
+
+  // Net lift per 1 m³ balloon at target altitude
+  // 1 m³ generates (16.5 * pTarget) pN lift, but adds (11 * blockDensity) pN weight
+  const liftPerUnit = 16.5 * pTarget;
+  const weightPerUnit = 11.0 * blockDensity;
+  const netLiftPerUnit = liftPerUnit - weightPerUnit;
+
+  if (netLiftPerUnit <= 0) {
+    plannerTargetVolume.textContent = "IMPOSSIBLE";
+    plannerDeltaVolume.textContent = `Balloon material (${blockDensity} kpg/m³) is too heavy for buoyancy at Y=${formatAltitude(targetAlt)}!`;
+    if (btnApplyTarget) btnApplyTarget.disabled = true;
+    return;
+  }
+
+  // Base non-balloon ship mass (dry mass)
+  const currentBalloonMass = currentBalloonVol * blockDensity;
+  const dryMass = Math.max(0, effectiveMass - currentBalloonMass);
+
+  // Equilibrium equation at Y_target:
+  // (16.5 * V_target + levitation) * pTarget = 11 * dryMass + 11 * blockDensity * V_target
+  // V_target * (16.5 * pTarget - 11 * blockDensity) = 11 * dryMass - levitation * pTarget
+  const numerator = 11.0 * dryMass - levitation * pTarget;
+
+  let targetVol = 0;
+  if (numerator <= 0) {
+    targetVol = 0;
+  } else {
+    targetVol = numerator / netLiftPerUnit;
+  }
+
+  const targetVolCeil = Math.ceil(targetVol);
+  const deltaVol = targetVolCeil - currentBalloonVol;
+
+  plannerTargetVolume.textContent = formatNumber(targetVolCeil) + " m³";
+  const sign = deltaVol > 0 ? "+" : "";
+  plannerDeltaVolume.textContent = sign + formatNumber(deltaVol) + " m³" + (deltaVol === 0 ? " (At target ceiling)" : (deltaVol > 0 ? " needed" : " excess"));
+
+  if (btnApplyTarget) {
+    btnApplyTarget.disabled = false;
+    btnApplyTarget.onclick = () => {
+      balloonVolInput.value = targetVolCeil;
+      if (blockDensity > 0) {
+        const newTotalMass = parseFloat((dryMass + targetVolCeil * blockDensity).toFixed(2));
+        massInput.value = newTotalMass;
+        if (gravityInput.value.trim() !== '') {
+          gravityInput.value = parseFloat((newTotalMass * 11).toFixed(2));
+        }
+      }
+      recompute();
+      updateUrlHash();
+      showToast(`TARGET VOLUME (${formatNumber(targetVolCeil)} m³) APPLIED TO VESSEL!`);
+    };
   }
 }
 
@@ -520,10 +666,18 @@ function updateUrlHash() {
   const p = new URLSearchParams();
   p.set('name', shipNameInput.value);
   p.set('m', massInput.value);
-  p.set('g', gravityInput.value);
+  if (gravityInput.value.trim() !== '' && userEditedGravityManually) {
+    p.set('g', gravityInput.value);
+  }
   p.set('vol', balloonVolInput.value);
   p.set('lev', levitationInput.value);
   p.set('dim', dimensionSelect.value);
+  if (targetAltInput && targetAltInput.value) {
+    p.set('tY', targetAltInput.value);
+  }
+  if (blockDensityInput && blockDensityInput.value && blockDensityInput.value !== '0') {
+    p.set('bM', blockDensityInput.value);
+  }
   window.history.replaceState(null, '', '#' + p.toString());
 }
 
@@ -533,13 +687,17 @@ function loadFromUrlHash() {
     const p = new URLSearchParams(window.location.hash.substring(1));
     if (p.has('name')) shipNameInput.value = p.get('name');
     if (p.has('m')) massInput.value = p.get('m');
-    if (p.has('g')) {
+    if (p.has('g') && p.get('g') !== '') {
       gravityInput.value = p.get('g');
       userEditedGravityManually = true;
+    } else {
+      userEditedGravityManually = false;
     }
     if (p.has('vol')) balloonVolInput.value = p.get('vol');
     if (p.has('lev')) levitationInput.value = p.get('lev');
     if (p.has('dim')) dimensionSelect.value = p.get('dim');
+    if (p.has('tY') && targetAltInput) targetAltInput.value = p.get('tY');
+    if (p.has('bM') && blockDensityInput) blockDensityInput.value = p.get('bM');
   } catch (err) {
     console.warn("Error reading URL hash:", err);
   }
@@ -731,8 +889,8 @@ btnExportCard.addEventListener('click', () => {
 
   // Forces Breakdown Table
   ctx.fillStyle = cardBg;
-  ctx.fillRect(statsX, statsY + 90, statsW, 230);
-  ctx.strokeRect(statsX, statsY + 90, statsW, 230);
+  ctx.fillRect(statsX, statsY + 90, statsW, 240);
+  ctx.strokeRect(statsX, statsY + 90, statsW, 240);
 
   ctx.fillStyle = ink;
   ctx.font = 'bold 12px "Space Mono"';
@@ -746,35 +904,36 @@ btnExportCard.addEventListener('click', () => {
     ["Balloon lift force:", valBalloonLift.textContent],
     ["Levitation force:", valLevitation.textContent],
     ["Combined lift force:", valCombinedLift.textContent],
+    ["Lift-to-weight ratio:", valLiftRatio ? valLiftRatio.textContent : "1.00 : 1"],
     ["Minimum required air pressure:", valReqPressure.textContent]
   ];
 
-  let currentY = statsY + 145;
+  let currentY = statsY + 140;
   ctx.font = '12px "Space Mono"';
   rows.forEach(([label, val], idx) => {
-    ctx.fillStyle = (idx === 5) ? ink : inkLight;
+    ctx.fillStyle = (idx === 5 || idx === 6) ? ink : inkLight;
     ctx.textAlign = 'left';
     ctx.fillText(label, statsX + 20, currentY);
 
     ctx.fillStyle = ink;
     ctx.textAlign = 'right';
-    if (idx === 5) ctx.font = 'bold 13px "Space Mono"';
+    if (idx === 5 || idx === 6) ctx.font = 'bold 13px "Space Mono"';
     ctx.fillText(val, statsX + statsW - 20, currentY);
     ctx.font = '12px "Space Mono"';
 
-    currentY += 24;
+    currentY += 22;
   });
 
   // Maximum Flight Ceiling Display
   ctx.fillStyle = cardBg;
-  ctx.fillRect(statsX, statsY + 340, statsW, 175);
+  ctx.fillRect(statsX, statsY + 345, statsW, 170);
   ctx.strokeStyle = ink;
-  ctx.strokeRect(statsX, statsY + 340, statsW, 175);
+  ctx.strokeRect(statsX, statsY + 345, statsW, 170);
 
   ctx.fillStyle = inkLight;
   ctx.font = '11px "Space Mono"';
   ctx.textAlign = 'center';
-  ctx.fillText("CALCULATED MAXIMUM FLIGHT CEILING", statsX + statsW / 2, statsY + 375);
+  ctx.fillText("CALCULATED MAXIMUM FLIGHT CEILING", statsX + statsW / 2, statsY + 378);
 
   ctx.fillStyle = ink;
   ctx.font = 'bold 56px "Share Tech Mono"';

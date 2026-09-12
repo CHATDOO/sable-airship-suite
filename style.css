@@ -458,6 +458,14 @@ body {
   font-family: var(--font-tech);
 }
 
+.input-hint-badge {
+  font-size: 0.58rem;
+  font-weight: normal;
+  color: var(--ink-light);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .dimension-select {
   width: 100%;
   padding: 5px 6px;
@@ -468,6 +476,85 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border-ink);
   cursor: pointer;
+}
+
+/* TARGET ALTITUDE & BUOYANCY PLANNER PLATE */
+.planner-plate {
+  border: 1px dashed var(--border-ink);
+  background: var(--bg-card);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.planner-plate-header {
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 4px;
+}
+
+.planner-plate-hint {
+  color: var(--ink-light);
+  font-weight: normal;
+  font-size: 0.6rem;
+}
+
+.planner-intro {
+  font-size: 0.64rem;
+  color: var(--ink-light);
+  line-height: 1.35;
+}
+
+.planner-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.planner-results {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.7rem;
+}
+
+.planner-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planner-stat-row.highlight {
+  border-top: 1px dotted var(--border-light);
+  border-bottom: 1px dotted var(--border-light);
+  padding: 3px 0;
+  font-weight: bold;
+}
+
+.planner-stat-label {
+  color: var(--ink-dim);
+}
+
+.planner-stat-val {
+  font-family: var(--font-tech);
+  font-weight: bold;
+  color: var(--ink-primary);
+}
+
+.planner-apply-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 6px 10px;
 }
 
 /* RIGHT COLUMN: CALCULATIONS */
