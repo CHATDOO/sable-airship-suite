@@ -80,7 +80,7 @@
         <!-- VESSEL PHOTOGRAPH PLATE -->
         <div class="photo-plate">
           <div class="photo-plate-header">
-            <span>[ PLATE 1 : VESSEL SCHEMATIC PHOTOGRAPH ]</span>
+            <span>[ PLATE 1 : AIRSHIP VISUAL SHOWCASE (OPTIONAL) ]</span>
             <span class="photo-plate-hint">DROP, CLICK OR CTRL+V</span>
           </div>
 
@@ -94,8 +94,8 @@
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <path d="M21 15l-5-5L5 21"/>
               </svg>
-              <span>ATTACH VESSEL PHOTOGRAPH / SCREENSHOT</span>
-              <span class="photo-hint-sub">(Tip: take screenshot in-game and press Ctrl+V here)</span>
+              <span>ATTACH VESSEL SCREENSHOT / DRAWING</span>
+              <span class="photo-hint-sub">Visual showcase for Blueprint Card PNG export (Not an OCR calculator)</span>
             </div>
 
             <div class="photo-controls" id="photoControls" style="display: none;">
@@ -112,7 +112,7 @@
             <div class="input-group">
               <label for="massInput">SHIP MASS</label>
               <div class="input-wrapper">
-                <input type="number" id="massInput" class="input-field" value="1200" min="1" step="1">
+                <input type="number" id="massInput" class="input-field" value="1200" min="0" step="any">
                 <span class="unit-badge">kpg</span>
               </div>
             </div>
@@ -120,7 +120,7 @@
             <div class="input-group">
               <label for="gravityInput">GRAVITATIONAL FORCE</label>
               <div class="input-wrapper">
-                <input type="number" id="gravityInput" class="input-field" value="13200" min="0" step="1">
+                <input type="number" id="gravityInput" class="input-field" value="13200" min="0" step="any">
                 <span class="unit-badge">pN</span>
               </div>
             </div>
@@ -128,7 +128,7 @@
             <div class="input-group">
               <label for="balloonVolInput">BALLOON VOLUME</label>
               <div class="input-wrapper">
-                <input type="number" id="balloonVolInput" class="input-field" value="1200" min="0" step="1">
+                <input type="number" id="balloonVolInput" class="input-field" value="1200" min="0" step="any">
                 <span class="unit-badge">m³</span>
               </div>
             </div>
@@ -136,7 +136,7 @@
             <div class="input-group">
               <label for="levitationInput">LEVITATION COILS</label>
               <div class="input-wrapper">
-                <input type="number" id="levitationInput" class="input-field" value="0" min="0" step="1">
+                <input type="number" id="levitationInput" class="input-field" value="0" min="0" step="any">
                 <span class="unit-badge">pN</span>
               </div>
             </div>
@@ -158,6 +158,23 @@
       <!-- RIGHT COLUMN: FORCES BREAKDOWN & CEILING READOUT -->
       <section class="col-right">
         
+        <!-- PHYSICAL MISMATCH ALERT BANNER -->
+        <div class="mismatch-banner" id="mismatchBanner" style="display: none;">
+          <div class="mismatch-banner-header">
+            <span class="mismatch-title">[!] "ship mass and gravitational force don't math!"</span>
+            <button type="button" class="btn-help-modal" id="btnHelpModal" title="Why must they match?">?</button>
+          </div>
+          <div class="mismatch-body">
+            <div>Create: Aeronautics physical law: <strong>F<sub>grav</sub> = Mass × 11</strong>.</div>
+            <div class="mismatch-detail">
+              <span>Entered: <strong id="errEnteredGrav">0 pN</strong></span>
+              <span class="sep-bullet">•</span>
+              <span>Expected: <strong id="errExpectedGrav">0 pN</strong></span>
+            </div>
+            <button type="button" class="btn-sync-inline" id="btnSyncInline">[ AUTO-SYNC GRAVITY TO MASS × 11 ]</button>
+          </div>
+        </div>
+
         <!-- AIRWORTHINESS STATUS BANNER -->
         <div class="status-banner">
           <div>
@@ -233,8 +250,24 @@
   <!-- TOAST NOTIFICATION -->
   <div class="toast-msg" id="toastMsg">CONFIGURATION LINK COPIED TO CLIPBOARD!</div>
 
-  <!-- HIDDEN CANVAS FOR BLUEPRINT CARD EXPORT -->
-  <canvas id="exportCanvas" width="1200" height="800"></canvas>
+  <!-- PHYSICAL LAW HELP MODAL -->
+  <div class="modal-backdrop" id="helpModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span>[ PHYSICAL LAW : MASS vs GRAVITATIONAL FORCE ]</span>
+        <button type="button" class="modal-close-btn" id="btnCloseModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>In <strong>Create: Aeronautics</strong>, every block and assembly is subject to standard Minecraft gravitational acceleration: <strong>11 pN per kpg</strong>.</p>
+        <div class="modal-equation">
+          F<sub>gravity</sub> (pN) = Mass (kpg) × 11
+        </div>
+        <p>If you enter both values manually and they differ from this relationship (tolerance &plusmn;0.5 pN), the physics engine detects a contradiction and cannot compute an equilibrium flight ceiling.</p>
+        <p>You can either update the gravitational force to match <code>Mass × 11</code>, or click below to synchronize automatically:</p>
+        <button type="button" class="btn-action btn-accent" id="btnModalSync" style="width: 100%; margin-top: 10px;">[ AUTO-SYNC GRAVITY TO MASS × 11 ]</button>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

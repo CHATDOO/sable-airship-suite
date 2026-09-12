@@ -479,6 +479,89 @@ body {
   background: rgba(0,0,0,0.01);
 }
 
+/* PHYSICAL MISMATCH ALERT BANNER */
+.mismatch-banner {
+  border: 2px solid var(--stamp-red);
+  background: rgba(168, 32, 32, 0.08);
+  padding: 8px 10px;
+}
+[data-theme="dark"] .mismatch-banner {
+  background: rgba(239, 68, 68, 0.12);
+}
+[data-theme="blueprint"] .mismatch-banner {
+  background: rgba(255, 77, 79, 0.14);
+}
+
+.mismatch-banner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--stamp-red);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.mismatch-title {
+  color: var(--stamp-red);
+  font-size: 0.74rem;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+}
+
+.btn-help-modal {
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--stamp-red);
+  background: var(--bg-card);
+  color: var(--stamp-red);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.btn-help-modal:hover {
+  background: var(--stamp-red);
+  color: #fff;
+}
+
+.mismatch-body {
+  font-size: 0.66rem;
+  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mismatch-detail {
+  font-size: 0.68rem;
+  color: var(--ink-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-sync-inline {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--stamp-red);
+  color: var(--stamp-red);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-sync-inline:hover {
+  background: var(--stamp-red);
+  color: #fff;
+}
+
 /* AIRWORTHINESS STATUS BANNER */
 .status-banner {
   border: 2px solid var(--border-ink);
@@ -650,6 +733,78 @@ body {
 
 #exportCanvas {
   display: none;
+}
+
+/* PHYSICAL LAW MODAL */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-card {
+  background: var(--bg-surface);
+  border: 3px double var(--border-ink);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  max-width: 520px;
+  width: 100%;
+  padding: 16px;
+  font-family: var(--font-mono);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--border-ink);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: var(--ink-primary);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-primary);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.modal-close-btn:hover {
+  color: var(--stamp-red);
+}
+
+.modal-body {
+  font-size: 0.74rem;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-equation {
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  padding: 10px;
+  text-align: center;
+  font-family: var(--font-tech);
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: var(--ink-primary);
+  margin: 4px 0;
 }
 
 @media (max-width: 860px) {

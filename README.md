@@ -15,13 +15,16 @@ Sable Airship Suite provides an authentic engineering drafting board experience 
   - `VELLUM`: Traditional 1900 drafting paper (light cream default).
   - `DARK CAD`: High-contrast neutral monochrome slate/black chalkboard (zero blue tint).
   - `BLUEPRINT`: Classic cyanotype blueprint with luminous cyan line-work.
-- **Vessel Photograph Plate (Plate 1)**:
+- **Vessel Visual Showcase Plate (Plate 1)**:
   - Drag and drop image files directly onto the plate.
-  - File picker upload.
-  - Global `Ctrl+V` clipboard paste support (take a screenshot in-game and paste directly).
+  - File picker upload or instant `Ctrl+V` clipboard paste from in-game screenshots.
+  - Purely cosmetic drafting plate stamped onto the exported Blueprint Card PNG for sharing builds on Discord (not an OCR calculator).
+- **Physical Law Mismatch Alert**:
+  - Live validation enforcing Create: Aeronautics gravity physics: `F_gravity (pN) = Mass (kpg) × 11`.
+  - Displays a prominent alert banner `[!] "ship mass and gravitational force don't math!"` with interactive `(?)` help modal and one-click auto-sync.
 - **Blueprint Card Export (PNG)**:
   - Generate an official high-resolution 1200x800 blueprint specification card with one click.
-  - Contains vessel photo, full vector forces breakdown, airworthiness certification stamp (`AIRWORTHY` or `OVERWEIGHT`), and official credits for sharing on Discord.
+  - Contains vessel visual plate, full vector forces breakdown, airworthiness certification stamp (`AIRWORTHY`, `OVERWEIGHT`, or `MISMATCH`), and official credits.
 - **Quick Vessel Presets**:
   - `[ SCOUT SKIFF - 450 kpg ]`
   - `[ RECON CORVETTE - 1,200 kpg ]`
@@ -30,9 +33,10 @@ Sable Airship Suite provides an authentic engineering drafting board experience 
 - **Instant Configuration Sharing**:
   - Real-time bidirectional URL hash synchronization (`#name=...&m=...&g=...&vol=...&lev=...&dim=...`).
   - One-click copy button with toast notification.
-- **Lili's Exact Hermite Spline Engine**:
-  - Computes the barometric pressure curve $P(Y)$ across the Overworld piecewise Hermite spline ($Y \in [63, 263]$, $[263, 280]$, $[280, 320]$).
-  - Reverse equilibrium bisection down to exact Minecraft integer block levels.
+- **Lili's Exact Hermite Spline Engine & Newton-Raphson Solver**:
+  - Computes the barometric pressure curve $P(Y)$ across Sable's Overworld piecewise Hermite spline ($Y \in [63, 263]$, $[263, 280]$, $[280, 320]$).
+  - Solves the inverse polynomial with high-order Newton-Raphson iterations to provide exact decimal flight ceilings (e.g. `Y = 302.2`).
+  - Preserves exact decimal precision for forces and masses without forced integer rounding.
 - **Flipped Barometric Profile Diagram**:
   - Collapsible diagram displaying the atmospheric decay with 100% surface pressure on the left and 0% void pressure on the right.
 

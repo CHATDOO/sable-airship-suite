@@ -15,6 +15,15 @@ const balloonVolInput = document.getElementById('balloonVolInput');
 const levitationInput = document.getElementById('levitationInput');
 const dimensionSelect = document.getElementById('dimensionSelect');
 
+const mismatchBanner = document.getElementById('mismatchBanner');
+const errEnteredGrav = document.getElementById('errEnteredGrav');
+const errExpectedGrav = document.getElementById('errExpectedGrav');
+const btnHelpModal = document.getElementById('btnHelpModal');
+const btnCloseModal = document.getElementById('btnCloseModal');
+const helpModal = document.getElementById('helpModal');
+const btnSyncInline = document.getElementById('btnSyncInline');
+const btnModalSync = document.getElementById('btnModalSync');
+
 const valGravity = document.getElementById('valGravity');
 const valBalloonLift = document.getElementById('valBalloonLift');
 const valLevitation = document.getElementById('valLevitation');
@@ -42,6 +51,36 @@ const themeToggleBtn = document.getElementById('themeToggleBtn');
 const themeText = document.getElementById('themeText');
 const toastMsg = document.getElementById('toastMsg');
 
+// --- PHYSICAL LAW MODAL EVENT HANDLERS ---
+if (btnHelpModal) {
+  btnHelpModal.addEventListener('click', () => {
+    if (helpModal) helpModal.style.display = 'flex';
+  });
+}
+if (btnCloseModal) {
+  btnCloseModal.addEventListener('click', () => {
+    if (helpModal) helpModal.style.display = 'none';
+  });
+}
+if (helpModal) {
+  helpModal.addEventListener('click', (e) => {
+    if (e.target === helpModal) helpModal.style.display = 'none';
+  });
+}
+
+function syncGravityToMass() {
+  const m = parseFloat(massInput.value) || 0;
+  gravityInput.value = parseFloat((m * 11).toFixed(4));
+  userEditedGravityManually = false;
+  if (helpModal) helpModal.style.display = 'none';
+  recompute();
+  updateUrlHash();
+  showToast("GRAVITATIONAL FORCE SYNCHRONIZED TO MASS × 11");
+}
+
+if (btnSyncInline) btnSyncInline.addEventListener('click', syncGravityToMass);
+if (btnModalSync) btnModalSync.addEventListener('click', syncGravityToMass);
+
 // --- 3-THEME CYCLING ENGINE (VELLUM -> DARK CAD -> BLUEPRINT) ---
 const availableThemes = [
   { id: 'vellum', label: 'VELLUM' },
@@ -63,12 +102,17 @@ themeToggleBtn.addEventListener('click', () => {
 // dev.ryanhcode.sable.physics.config.dimension_physics:
 // - DimensionPhysics.java (createDefault Overworld)
 // - BezierResourceFunction.java (Hermite cubic piecewise spline)
+// Control Points:
+// Point 1: Y = 63.0   -> P = 1.0,                 Slope = -0.004
+// Point 2: Y = 263.0  -> P = 0.44932896411722156, Slope = -0.0017973158564688863
+// Point 3: Y = 280.0  -> P = 0.4197862776378877,  Slope = -0.0016791451105515507
+// Point 4: Y = 320.0  -> P = 0.0,                 Slope = -0.020989313881894386
 // ==========================================================
 const SABLE_OVERWORLD_POINTS = [
-  { altitude: 63.0, value: 1.0, slope: -0.004 },
+  { altitude: 63.0,  value: 1.0,                 slope: -0.004 },
   { altitude: 263.0, value: 0.44932896411722156, slope: -0.0017973158564688863 },
-  { altitude: 280.0, value: 0.4197862776378877, slope: -0.0016791451105515507 },
-  { altitude: 320.0, value: 0.0, slope: -0.020989313881894386 }
+  { altitude: 280.0, value: 0.4197862776378877,  slope: -0.0016791451105515507 },
+  { altitude: 320.0, value: 0.0,                 slope: -0.020989313881894386 }
 ];
 
 // Evaluates atmospheric air pressure P at altitude Y
@@ -94,34 +138,74 @@ function getOverworldPressureAtY(y) {
   return 0.0;
 }
 
-// Bisection root solver to invert P(Y) for required target pressure P
-function findOverworldYForPressure(targetP) {
-  if (targetP >= 1.0) return 63;
-  if (targetP <= 0.0) return 320;
-  
-  let low = 63.0, high = 320.0;
-  for (let i = 0; i < 40; i++) {
-    const mid = (low + high) / 2.0;
-    const pMid = getOverworldPressureAtY(mid);
-    if (pMid > targetP) {
-      low = mid;
-    } else {
-      high = mid;
-    }
+// Exact Newton-Raphson inverse solver for required target pressure P
+// Yields precise decimal altitudes like Y = 302.2
+function solveAltitudeForPressure(targetPressure) {
+  if (targetPressure >= 1.0) return 63.0;
+  if (targetPressure <= 0.0) return 320.0;
+
+  let index = 0;
+  if (targetPressure < 0.4197862776378877) {
+    index = 2; // [280 to 320]
+  } else if (targetPressure < 0.44932896411722156) {
+    index = 1; // [263 to 280]
+  } else {
+    index = 0; // [63 to 263]
   }
-  return Math.round((low + high) / 2.0);
+
+  const p1 = SABLE_OVERWORLD_POINTS[index];
+  const p2 = SABLE_OVERWORLD_POINTS[index + 1];
+
+  const relX = p2.altitude - p1.altitude;
+  const relY = p2.value - p1.value;
+  const s1 = p1.slope;
+  const s2 = p2.slope;
+
+  const a = (s1 + s2) * relX - 2.0 * relY;
+  const b = 3.0 * relY - (2.0 * s1 + s2) * relX;
+  const c = relX * s1;
+  const d = p1.value - targetPressure;
+
+  // Newton-Raphson solver for t in [0, 1]
+  let t = 0.5;
+  for (let iter = 0; iter < 16; iter++) {
+    const f = ((a * t + b) * t + c) * t + d;
+    const df = (3.0 * a * t + 2.0 * b) * t + c;
+    if (Math.abs(df) < 1e-12) break;
+    const dt = f / df;
+    t -= dt;
+    if (Math.abs(dt) < 1e-9) break;
+  }
+
+  t = Math.max(0.0, Math.min(1.0, t));
+  return p1.altitude + t * relX;
 }
 
-// Number formatting (US comma style)
-function formatNumber(num) {
-  return Math.round(num).toLocaleString('en-US');
+// Number formatting preserving decimal precision (no forced rounding)
+function formatNumber(num, maxDecimals = 2) {
+  if (num === null || num === undefined || isNaN(num)) return "0";
+  return Number(num).toLocaleString('en-US', { maximumFractionDigits: maxDecimals });
+}
+
+// Altitude display formatting (exact 1 decimal place like 302.2)
+function formatAltitude(y) {
+  if (y >= 320.0) return "320";
+  if (y <= 63.0) return "63";
+  return y.toFixed(1);
 }
 
 // --- SYNCHRONIZATION OF INPUTS ---
 massInput.addEventListener('input', () => {
   if (!userEditedGravityManually) {
-    const m = parseFloat(massInput.value) || 0;
-    gravityInput.value = Math.round(m * 11);
+    const rawM = massInput.value.trim();
+    if (rawM !== '') {
+      const m = parseFloat(rawM);
+      if (!isNaN(m)) {
+        gravityInput.value = parseFloat((m * 11).toFixed(4));
+      }
+    } else {
+      gravityInput.value = '';
+    }
   }
   recompute();
   updateUrlHash();
@@ -140,15 +224,17 @@ shipNameInput.addEventListener('input', () => { updateUrlHash(); });
 
 // --- PRIMARY CALCULATION ENGINE ---
 function recompute() {
-  const mass = parseFloat(massInput.value) || 0;
-  const gravity = parseFloat(gravityInput.value) || 0;
+  const rawMass = massInput.value.trim();
+  const rawGravity = gravityInput.value.trim();
+  const mass = parseFloat(rawMass) || 0;
+  const gravity = parseFloat(rawGravity) || 0;
   const balloonVol = parseFloat(balloonVolInput.value) || 0;
   const levitation = parseFloat(levitationInput.value) || 0;
   const dimension = dimensionSelect.value;
 
-  // Check Lili's mismatch rule: Gravitational force (pN) = Mass (kpg) * 11
-  const expectedGravity = Math.round(mass * 11);
-  const mathMismatch = userEditedGravityManually && mass > 0 && gravity > 0 && Math.abs(gravity - expectedGravity) > 1;
+  // Lili's Mismatch Rule: Gravitational force (pN) = Mass (kpg) * 11
+  const expectedGravity = mass * 11;
+  const mathMismatch = (rawMass !== '' && rawGravity !== '' && Math.abs(gravity - expectedGravity) > 0.5);
 
   // 1 m³ balloon volume lifts 1.5 kpg * 11 = 16.5 pN lift force
   const balloonLift = balloonVol * 16.5;
@@ -160,15 +246,25 @@ function recompute() {
   valCombinedLift.textContent = formatNumber(combinedLift) + " pN";
 
   if (mathMismatch) {
+    if (mismatchBanner) {
+      mismatchBanner.style.display = 'block';
+      errEnteredGrav.textContent = formatNumber(gravity) + " pN";
+      errExpectedGrav.textContent = formatNumber(expectedGravity) + " pN";
+    }
+
     flightStatusText.textContent = 'STATUS: "ship mass and gravitational force don\'t math!"';
     flightStatusText.className = "status-tag grounded";
     flightStamp.textContent = "MISMATCH";
     flightStamp.className = "stamp-box";
     valReqPressure.textContent = "MISMATCH";
     valCeilingY.textContent = "ERR";
-    valCeilingSub.textContent = `Expected Grav Force = Mass × 11 = ${formatNumber(expectedGravity)} pN`;
+    valCeilingSub.textContent = `Expected Grav Force = Mass × 11 = ${formatNumber(expectedGravity)} pN (Differ by ${formatNumber(Math.abs(gravity - expectedGravity))} pN)`;
     drawDiagram(null, null);
     return;
+  }
+
+  if (mismatchBanner) {
+    mismatchBanner.style.display = 'none';
   }
 
   if (combinedLift <= 0 || gravity <= 0) {
@@ -210,8 +306,8 @@ function recompute() {
       valCeilingSub.textContent = "Maximum world ceiling reached (Atmosphere ends at Y=320)";
       drawDiagram(0.0, 320);
     } else {
-      const ceilingY = findOverworldYForPressure(reqPressure);
-      valCeilingY.textContent = "Y = " + ceilingY;
+      const ceilingY = solveAltitudeForPressure(reqPressure);
+      valCeilingY.textContent = "Y = " + formatAltitude(ceilingY);
       valCeilingSub.textContent = "Required ambient pressure: " + reqPressurePercent;
       drawDiagram(reqPressure, ceilingY);
     }
@@ -332,7 +428,7 @@ function drawDiagram(currentP, currentY) {
 
     ctx.font = 'bold 10px "Space Mono"';
     ctx.textAlign = ptX > w - 100 ? 'right' : 'left';
-    ctx.fillText(`AIRSHIP (Y=${currentY})`, ptX + (ptX > w - 100 ? -8 : 8), ptY - 6);
+    ctx.fillText(`AIRSHIP (Y=${formatAltitude(currentY)})`, ptX + (ptX > w - 100 ? -8 : 8), ptY - 6);
   }
 }
 
@@ -629,7 +725,8 @@ btnExportCard.addEventListener('click', () => {
   const statsX = 590, statsY = 145, statsW = 550;
 
   // Airworthiness Banner
-  const canFly = valCeilingY.textContent !== "GROUNDED" && valCeilingY.textContent !== "N/A" && valCeilingY.textContent !== "ERR";
+  const isMismatch = valCeilingY.textContent === "ERR";
+  const canFly = valCeilingY.textContent !== "GROUNDED" && valCeilingY.textContent !== "N/A" && !isMismatch;
   ctx.fillStyle = cardBg;
   ctx.fillRect(statsX, statsY, statsW, 70);
   ctx.strokeStyle = ink;
@@ -641,11 +738,15 @@ btnExportCard.addEventListener('click', () => {
   ctx.fillText("AIRWORTHINESS CERTIFICATION REPORT:", statsX + 20, statsY + 25);
 
   ctx.font = 'bold 16px "Space Mono"';
-  ctx.fillStyle = canFly ? stampGreen : stampRed;
-  ctx.fillText(canFly ? "STATUS: AIRWORTHY / FLIGHT READY" : "STATUS: GROUNDED / OVERWEIGHT", statsX + 20, statsY + 52);
+  ctx.fillStyle = isMismatch ? stampRed : (canFly ? stampGreen : stampRed);
+  const statusExportText = isMismatch 
+    ? 'STATUS: "ship mass and gravitational force don\'t math!"' 
+    : (canFly ? "STATUS: AIRWORTHY / FLIGHT READY" : "STATUS: GROUNDED / OVERWEIGHT");
+  ctx.fillText(statusExportText, statsX + 20, statsY + 52);
 
   // Certification Stamp
-  drawStamp(ctx, statsX + statsW - 130, statsY + 35, canFly ? "AIRWORTHY" : "OVERWEIGHT", canFly ? stampGreen : stampRed);
+  const stampExportText = isMismatch ? "MISMATCH" : (canFly ? "AIRWORTHY" : "OVERWEIGHT");
+  drawStamp(ctx, statsX + statsW - 130, statsY + 35, stampExportText, canFly && !isMismatch ? stampGreen : stampRed);
 
   // Forces Breakdown Table
   ctx.fillStyle = cardBg;
@@ -658,9 +759,9 @@ btnExportCard.addEventListener('click', () => {
   ctx.fillText("VECTOR FORCES BREAKDOWN:", statsX + 20, statsY + 115);
 
   const rows = [
-    ["Ship mass:", formatNumber(massInput.value) + " kpg"],
+    ["Ship mass:", formatNumber(massInput.value, 2) + " kpg"],
     ["Gravitational force:", valGravity.textContent],
-    ["Balloon volume:", formatNumber(balloonVolInput.value) + " m³"],
+    ["Balloon volume:", formatNumber(balloonVolInput.value, 2) + " m³"],
     ["Balloon lift force:", valBalloonLift.textContent],
     ["Levitation force:", valLevitation.textContent],
     ["Combined lift force:", valCombinedLift.textContent],
