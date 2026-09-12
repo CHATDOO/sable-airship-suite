@@ -501,39 +501,6 @@ btnRemovePhoto.addEventListener('click', (e) => {
   photoInput.value = '';
 });
 
-// --- QUICK PRESETS (CLEAN LABELS, NO EMOJIS) ---
-window.applyPreset = function(type) {
-  userEditedGravityManually = false;
-  if (type === 'skiff') {
-    shipNameInput.value = 'SCOUT SKIFF - MK I';
-    massInput.value = '450';
-    gravityInput.value = '4950';
-    balloonVolInput.value = '450';
-    levitationInput.value = '0';
-  } else if (type === 'corvette') {
-    shipNameInput.value = 'RECON CORVETTE - MK II';
-    massInput.value = '1200';
-    gravityInput.value = '13200';
-    balloonVolInput.value = '1200';
-    levitationInput.value = '0';
-  } else if (type === 'zeppelin') {
-    shipNameInput.value = 'CARGO ZEPPELIN - TITAN';
-    massInput.value = '3500';
-    gravityInput.value = '38500';
-    balloonVolInput.value = '3200';
-    levitationInput.value = '5000';
-  } else if (type === 'dreadnought') {
-    shipNameInput.value = 'DREADNOUGHT LEVIATHAN';
-    massInput.value = '8500';
-    gravityInput.value = '93500';
-    balloonVolInput.value = '7000';
-    levitationInput.value = '25000';
-  }
-  recompute();
-  updateUrlHash();
-  showToast("PRESET APPLIED!");
-};
-
 // --- URL HASH SYNC & SHARING ---
 function updateUrlHash() {
   const p = new URLSearchParams();
