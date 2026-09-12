@@ -1,10 +1,9 @@
 // ==========================================================
 // CREATE: AERONAUTICS & SABLE — FLIGHT CEILING COMPUTATION SUITE
-// Formulas & Logic : Lili
-// Drafted by       : CHATDOO
+// Formulas & Physical Logic : Lili & Sable Physics Engine
+// Drafted by                : CHATDOO
 // ==========================================================
 
-const OVERWORLD_MIN_P = 0.2829;
 let currentVesselPhoto = null;
 let userEditedGravityManually = false;
 
@@ -59,29 +58,50 @@ themeToggleBtn.addEventListener('click', () => {
   recompute();
 });
 
-// --- LILI'S ATMOSPHERIC HERMITE CUBIC SPLINE ---
+// ==========================================================
+// EXACT SABLE ATMOSPHERIC PHYSICS ENGINE (FROM SABLE SOURCE)
+// dev.ryanhcode.sable.physics.config.dimension_physics:
+// - DimensionPhysics.java (createDefault Overworld)
+// - BezierResourceFunction.java (Hermite cubic piecewise spline)
+// ==========================================================
+const SABLE_OVERWORLD_POINTS = [
+  { altitude: 63.0, value: 1.0, slope: -0.004 },
+  { altitude: 263.0, value: 0.44932896411722156, slope: -0.0017973158564688863 },
+  { altitude: 280.0, value: 0.4197862776378877, slope: -0.0016791451105515507 },
+  { altitude: 320.0, value: 0.0, slope: -0.020989313881894386 }
+];
+
+// Evaluates atmospheric air pressure P at altitude Y
 function getOverworldPressureAtY(y) {
-  if (y <= 63) return 1.0;
-  if (y >= 320) return OVERWORLD_MIN_P;
-  if (y <= 263) {
-    const t = (y - 63) / (263 - 63);
-    return 1.0 - 0.5 * (t * t * (3 - 2 * t));
-  } else if (y <= 280) {
-    const t = (y - 263) / (280 - 263);
-    return 0.5 - 0.1 * t;
-  } else {
-    const t = (y - 280) / (320 - 280);
-    return 0.4 - (0.4 - OVERWORLD_MIN_P) * (t * t * (3 - 2 * t));
+  if (y <= 63.0) return 1.0;
+  if (y >= 320.0) return 0.0;
+  
+  for (let i = 0; i < SABLE_OVERWORLD_POINTS.length - 1; i++) {
+    const p1 = SABLE_OVERWORLD_POINTS[i];
+    const p2 = SABLE_OVERWORLD_POINTS[i + 1];
+    if (y <= p2.altitude) {
+      const relX = p2.altitude - p1.altitude;
+      const relY = p2.value - p1.value;
+      const t = (y - p1.altitude) / relX;
+      
+      const cubic = (p1.slope + p2.slope) * relX - 2.0 * relY;
+      const quad = 3.0 * relY - (2.0 * p1.slope + p2.slope) * relX;
+      const lin = relX * p1.slope;
+      
+      return Math.max(((cubic * t + quad) * t + lin) * t + p1.value, 0.0);
+    }
   }
+  return 0.0;
 }
 
-// Bisection solver for required pressure P
+// Bisection root solver to invert P(Y) for required target pressure P
 function findOverworldYForPressure(targetP) {
   if (targetP >= 1.0) return 63;
-  if (targetP <= OVERWORLD_MIN_P) return 320;
-  let low = 63, high = 320;
-  for (let i = 0; i < 35; i++) {
-    const mid = (low + high) / 2;
+  if (targetP <= 0.0) return 320;
+  
+  let low = 63.0, high = 320.0;
+  for (let i = 0; i < 40; i++) {
+    const mid = (low + high) / 2.0;
     const pMid = getOverworldPressureAtY(mid);
     if (pMid > targetP) {
       low = mid;
@@ -89,15 +109,15 @@ function findOverworldYForPressure(targetP) {
       high = mid;
     }
   }
-  return Math.round((low + high) / 2);
+  return Math.round((low + high) / 2.0);
 }
 
-// English comma-separated number formatting
+// Number formatting (US comma style)
 function formatNumber(num) {
   return Math.round(num).toLocaleString('en-US');
 }
 
-// --- INPUT SYNCHRONIZATION ---
+// --- SYNCHRONIZATION OF INPUTS ---
 massInput.addEventListener('input', () => {
   if (!userEditedGravityManually) {
     const m = parseFloat(massInput.value) || 0;
@@ -118,7 +138,7 @@ levitationInput.addEventListener('input', () => { recompute(); updateUrlHash(); 
 dimensionSelect.addEventListener('change', () => { recompute(); updateUrlHash(); });
 shipNameInput.addEventListener('input', () => { updateUrlHash(); });
 
-// --- PRIMARY RECOMPUTATION ENGINE ---
+// --- PRIMARY CALCULATION ENGINE ---
 function recompute() {
   const mass = parseFloat(massInput.value) || 0;
   const gravity = parseFloat(gravityInput.value) || 0;
@@ -126,7 +146,11 @@ function recompute() {
   const levitation = parseFloat(levitationInput.value) || 0;
   const dimension = dimensionSelect.value;
 
-  // 1 m³ balloon = 1.5 kpg lift * 11 = 16.5 pN lift
+  // Check Lili's mismatch rule: Gravitational force (pN) = Mass (kpg) * 11
+  const expectedGravity = Math.round(mass * 11);
+  const mathMismatch = userEditedGravityManually && mass > 0 && gravity > 0 && Math.abs(gravity - expectedGravity) > 1;
+
+  // 1 m³ balloon volume lifts 1.5 kpg * 11 = 16.5 pN lift force
   const balloonLift = balloonVol * 16.5;
   const combinedLift = balloonLift + levitation;
 
@@ -134,6 +158,18 @@ function recompute() {
   valBalloonLift.textContent = formatNumber(balloonLift) + " pN";
   valLevitation.textContent = formatNumber(levitation) + " pN";
   valCombinedLift.textContent = formatNumber(combinedLift) + " pN";
+
+  if (mathMismatch) {
+    flightStatusText.textContent = 'STATUS: "ship mass and gravitational force don\'t math!"';
+    flightStatusText.className = "status-tag grounded";
+    flightStamp.textContent = "MISMATCH";
+    flightStamp.className = "stamp-box";
+    valReqPressure.textContent = "MISMATCH";
+    valCeilingY.textContent = "ERR";
+    valCeilingSub.textContent = `Expected Grav Force = Mass × 11 = ${formatNumber(expectedGravity)} pN`;
+    drawDiagram(null, null);
+    return;
+  }
 
   if (combinedLift <= 0 || gravity <= 0) {
     valReqPressure.textContent = "INVALID";
@@ -144,6 +180,7 @@ function recompute() {
     return;
   }
 
+  // Required atmospheric pressure fraction
   const reqPressure = gravity / combinedLift;
   const reqPressurePercent = (reqPressure * 100).toFixed(2) + " %";
   valReqPressure.textContent = reqPressurePercent;
@@ -160,18 +197,18 @@ function recompute() {
 
   if (dimension === 'nether') {
     valCeilingY.textContent = "Y ≈ 128";
-    valCeilingSub.textContent = "Dense uniform Nether atmosphere (Bedrock ceiling)";
+    valCeilingSub.textContent = "Dense uniform Nether atmosphere (Bedrock ceiling limit)";
     drawDiagram(null, null);
   } else if (dimension === 'end') {
     valCeilingY.textContent = "Y ≈ 256";
-    valCeilingSub.textContent = "Near-vacuum End void (Negligible atmospheric drag)";
+    valCeilingSub.textContent = "Near-vacuum End void (Negligible atmospheric decay)";
     drawDiagram(null, null);
   } else {
-    // Overworld
-    if (reqPressure <= OVERWORLD_MIN_P) {
+    // Overworld: Exact Sable Piecewise Hermite Spline calculation
+    if (reqPressure <= 0.0) {
       valCeilingY.textContent = "Y = 320";
-      valCeilingSub.textContent = "Maximum world ceiling reached (Void limit Y=320)";
-      drawDiagram(OVERWORLD_MIN_P, 320);
+      valCeilingSub.textContent = "Maximum world ceiling reached (Atmosphere ends at Y=320)";
+      drawDiagram(0.0, 320);
     } else {
       const ceilingY = findOverworldYForPressure(reqPressure);
       valCeilingY.textContent = "Y = " + ceilingY;
@@ -257,11 +294,11 @@ function drawDiagram(currentP, currentY) {
     ctx.fillText('Y=' + y, padLeft - 6, py + 3);
   }
 
-  // Overworld atmosphere curve
+  // Exact Sable Overworld atmosphere curve
   ctx.strokeStyle = curveColor;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  for (let y = 63; y <= 320; y += 2) {
+  for (let y = 63; y <= 320; y += 1) {
     const p = getOverworldPressureAtY(y);
     const x = padLeft + (1.0 - p) * plotW;
     const py = h - padBottom - ((y - 63) / (320 - 63)) * plotH;
@@ -270,7 +307,7 @@ function drawDiagram(currentP, currentY) {
   }
   ctx.stroke();
 
-  // Operating point of the vessel
+  // Operating equilibrium point of the vessel
   if (currentP !== null && currentY !== null) {
     const ptX = padLeft + (1.0 - currentP) * plotW;
     const ptY = h - padBottom - ((currentY - 63) / (320 - 63)) * plotH;
@@ -592,7 +629,7 @@ btnExportCard.addEventListener('click', () => {
   const statsX = 590, statsY = 145, statsW = 550;
 
   // Airworthiness Banner
-  const canFly = valCeilingY.textContent !== "GROUNDED" && valCeilingY.textContent !== "N/A";
+  const canFly = valCeilingY.textContent !== "GROUNDED" && valCeilingY.textContent !== "N/A" && valCeilingY.textContent !== "ERR";
   ctx.fillStyle = cardBg;
   ctx.fillRect(statsX, statsY, statsW, 70);
   ctx.strokeStyle = ink;
