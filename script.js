@@ -23,6 +23,8 @@ const btnCloseModal = document.getElementById('btnCloseModal');
 const helpModal = document.getElementById('helpModal');
 const btnSyncInline = document.getElementById('btnSyncInline');
 const btnModalSync = document.getElementById('btnModalSync');
+const btnSyncMassInline = document.getElementById('btnSyncMassInline');
+const btnModalSyncMass = document.getElementById('btnModalSyncMass');
 
 const valGravity = document.getElementById('valGravity');
 const valBalloonLift = document.getElementById('valBalloonLift');
@@ -78,8 +80,20 @@ function syncGravityToMass() {
   showToast("GRAVITATIONAL FORCE SYNCHRONIZED TO MASS × 11");
 }
 
+function syncMassToGravity() {
+  const g = parseFloat(gravityInput.value) || 0;
+  massInput.value = parseFloat((g / 11).toFixed(4));
+  userEditedGravityManually = false;
+  if (helpModal) helpModal.style.display = 'none';
+  recompute();
+  updateUrlHash();
+  showToast("SHIP MASS SYNCHRONIZED TO GRAVITY ÷ 11");
+}
+
 if (btnSyncInline) btnSyncInline.addEventListener('click', syncGravityToMass);
 if (btnModalSync) btnModalSync.addEventListener('click', syncGravityToMass);
+if (btnSyncMassInline) btnSyncMassInline.addEventListener('click', syncMassToGravity);
+if (btnModalSyncMass) btnModalSyncMass.addEventListener('click', syncMassToGravity);
 
 // --- 3-THEME CYCLING ENGINE (VELLUM -> DARK CAD -> BLUEPRINT) ---
 const availableThemes = [
@@ -232,9 +246,9 @@ function recompute() {
   const levitation = parseFloat(levitationInput.value) || 0;
   const dimension = dimensionSelect.value;
 
-  // Lili's Mismatch Rule: Gravitational force (pN) = Mass (kpg) * 11
+  // Lili's Mismatch Rule: Gravitational force (pN) = Mass (kpg) * 11 (strict decimal matching)
   const expectedGravity = mass * 11;
-  const mathMismatch = (rawMass !== '' && rawGravity !== '' && Math.abs(gravity - expectedGravity) > 0.5);
+  const mathMismatch = (rawMass !== '' && rawGravity !== '' && Math.abs(gravity - expectedGravity) > 0.01);
 
   // 1 m³ balloon volume lifts 1.5 kpg * 11 = 16.5 pN lift force
   const balloonLift = balloonVol * 16.5;

@@ -544,9 +544,14 @@ body {
   gap: 6px;
 }
 
-.btn-sync-inline {
-  align-self: flex-start;
+.mismatch-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
   margin-top: 4px;
+}
+
+.btn-sync-inline {
   background: var(--bg-card);
   border: 1px solid var(--stamp-red);
   color: var(--stamp-red);

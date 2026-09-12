@@ -162,7 +162,10 @@
               <span class="sep-bullet">•</span>
               <span>Expected: <strong id="errExpectedGrav">0 pN</strong></span>
             </div>
-            <button type="button" class="btn-sync-inline" id="btnSyncInline">[ AUTO-SYNC GRAVITY TO MASS × 11 ]</button>
+            <div class="mismatch-actions">
+              <button type="button" class="btn-sync-inline" id="btnSyncInline">[ SYNC GRAVITY (MASS × 11) ]</button>
+              <button type="button" class="btn-sync-inline" id="btnSyncMassInline">[ SYNC MASS (GRAVITY ÷ 11) ]</button>
+            </div>
           </div>
         </div>
 
@@ -253,9 +256,12 @@
         <div class="modal-equation">
           F<sub>gravity</sub> (pN) = Mass (kpg) × 11
         </div>
-        <p>If you enter both values manually and they differ from this relationship (tolerance &plusmn;0.5 pN), the physics engine detects a contradiction and cannot compute an equilibrium flight ceiling.</p>
-        <p>You can either update the gravitational force to match <code>Mass × 11</code>, or click below to synchronize automatically:</p>
-        <button type="button" class="btn-action btn-accent" id="btnModalSync" style="width: 100%; margin-top: 10px;">[ AUTO-SYNC GRAVITY TO MASS × 11 ]</button>
+        <p>If you enter both values manually and they differ from this exact relationship (including decimals), the physics engine detects a contradiction and cannot compute an equilibrium flight ceiling.</p>
+        <p>You can choose which value to trust and synchronize with one click:</p>
+        <div style="display: flex; gap: 8px; flex-direction: column; margin-top: 6px;">
+          <button type="button" class="btn-action btn-accent" id="btnModalSync" style="width: 100%;">[ SYNC GRAVITY = MASS × 11 ]</button>
+          <button type="button" class="btn-action" id="btnModalSyncMass" style="width: 100%;">[ SYNC MASS = GRAVITY ÷ 11 ]</button>
+        </div>
       </div>
     </div>
   </div>
